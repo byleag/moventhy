@@ -4,10 +4,11 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const KEY = "moventhy.v1", VERSION = "0.2.0";
 let S;
-const fresh = () => ({v:1, adult:false, onboarded:false, discovery:false, profile:null, plan:null, sessions:[], log:[], favs:[], myEvents:[], simOffset:0, lastMsgs:[],
+const fresh = () => ({v:1, adult:false, onboarded:false, discovery:false, account:null, loggedIn:false, profile:null, plan:null, sessions:[], log:[], favs:[], myEvents:[], simOffset:0, lastMsgs:[],
  settings:{scale:1, theme:"dark", hc:false, motion:true, voice:true, vibrate:true, sound:true}});
 function load(){ try { S = JSON.parse(localStorage.getItem(KEY)); } catch(e){ S = null; }
- if (!S || S.v!==1) S = fresh(); S.settings = Object.assign(fresh().settings, S.settings||{}); }
+ if (!S || S.v!==1) S = fresh(); S.settings = Object.assign(fresh().settings, S.settings||{});
+ if (S.loggedIn===undefined) S.loggedIn = !!S.onboarded; }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
 const T = () => todayOf(S);
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -95,7 +96,7 @@ const OVC = {welcome:"splash", player:"pl", ready:"ready"};
 function renderTabs(){ $("tabs").innerHTML = `<div>${TABS.map(([id,l,i]) => `<button data-a="tab" data-v="${id}" ${TAB===id ? 'aria-current="page"' : ""}>${ic(i)}<span>${l}</span></button>`).join("")}</div>`; }
 function render(){
  applySettings();
- if (!S.onboarded && !S.discovery && !OV.length) OV.push({k:"welcome"});
+ if (!S.loggedIn && !S.discovery && !OV.length) OV.push({k:"welcome"});
  renderTabs();
  const V = {today:vToday, plan:vPlan, explore:vExplore, progress:vProgress, profile:vProfile}[TAB];
  $("view").innerHTML = V();
@@ -127,10 +128,43 @@ OVK.welcome = () => `
   <p class="tl">Move. Grow. Evolve.</p>
   <p class="tl2">Le sport qui s'adapte à ta vie, et non l'inverse.</p>
  </div>
- <button class="check" role="checkbox" aria-checked="${S.adult}" data-a="adult"><span class="bx">${S.adult ? ic("check","s") : ""}</span><span>J'ai 18 ans ou plus</span></button>
- <button class="btn" data-a="startOnb" ${S.adult ? "" : "disabled"}>Créer mon programme</button>
- <button class="btn ghost" data-a="discover" ${S.adult ? "" : "disabled"}>Explorer d'abord</button>
- <p class="fine">Version de test · sans compte · tes données restent sur ce téléphone.<br>Ne remplace pas un avis médical.</p>`;
+ <button class="btn" data-a="signup">Créer un compte</button>
+ <button class="btn ghost" data-a="login">J'ai déjà un compte</button>
+ <button class="link" style="align-self:center;color:#8C9C9A;margin-top:6px" data-a="discoverAsk">Explorer sans compte</button>
+ <p class="fine">Réservé aux 18 ans et plus · ne remplace pas un avis médical.</p>`;
+
+/* ================= COMPTE ================= */
+let SU = null, PRESET = null;
+const newSU = () => ({first:"", last:"", email:"", pw:"", birth:"", cgu:false, news:false, show:false, err:{}});
+const ageOf = b => { const d = pd(b), t = pd(T()); let a = t.getFullYear()-d.getFullYear(); if (t.getMonth()<d.getMonth() || (t.getMonth()===d.getMonth() && t.getDate()<d.getDate())) a--; return a; };
+async function hashPw(pw, email){
+ const txt = "moventhy|" + email.toLowerCase() + "|" + pw;
+ try { const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(txt)); return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join(""); }
+ catch(e){ let h = 5381; for (const c of txt) h = ((h<<5)+h+c.charCodeAt(0))|0; return "f" + (h>>>0).toString(16); }
+}
+const fld = (k, label, type, extra) => `<label class="field"><span>${label}</span><input class="input" id="su_${k}" type="${type}" data-in="su:${k}" value="${esc(SU[k])}" ${extra||""} ${SU.err[k] ? `aria-invalid="true" aria-describedby="er_${k}"` : ""}>${SU.err[k] ? `<span class="xs" id="er_${k}" style="color:var(--danger);display:block;margin-top:6px">${esc(SU.err[k])}</span>` : ""}</label>`;
+const ckb = (k, html) => `<button class="toggle" role="checkbox" aria-checked="${SU[k]}" data-a="suT" data-k="${k}" style="align-items:flex-start"><span class="cb" style="flex:none;width:28px;height:28px;border-radius:9px;background:${SU[k] ? "var(--acc)" : "transparent"};border:1.5px solid ${SU[k] ? "var(--acc)" : "var(--sub)"};display:grid;place-items:center;color:var(--acc-tx)">${SU[k] ? ic("check","s") : ""}</span><span class="t small">${html}</span></button>`;
+OVK.signup = () => `<div class="ovh">${backBtn("suBack")}</div>
+ <p class="eyebrow">Inscription</p><h1>Crée ton compte</h1>
+ <div class="row" style="gap:10px"><div style="flex:1">${fld("first","Prénom","text",'autocomplete="given-name" maxlength="30"')}</div><div style="flex:1">${fld("last","Nom","text",'autocomplete="family-name" maxlength="40"')}</div></div>
+ ${fld("email","E-mail","email",'autocomplete="email" inputmode="email" maxlength="80"')}
+ <label class="field"><span>Mot de passe</span><div style="position:relative"><input class="input" id="su_pw" type="${SU.show ? "text" : "password"}" data-in="su:pw" value="${esc(SU.pw)}" autocomplete="new-password" minlength="8" style="padding-right:110px" ${SU.err.pw ? 'aria-invalid="true" aria-describedby="er_pw"' : 'aria-describedby="hint_pw"'}><button class="link" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);padding:0" data-a="suShow">${SU.show ? "Masquer" : "Afficher"}</button></div>
+  ${SU.err.pw ? `<span class="xs" id="er_pw" style="color:var(--danger);display:block;margin-top:6px">${esc(SU.err.pw)}</span>` : `<span class="xs sub" id="hint_pw" style="display:block;margin-top:6px">8 caractères minimum, dont un chiffre</span>`}</label>
+ ${fld("birth","Date de naissance","date",`max="${T()}"`)}
+ <div class="card flat" style="margin-top:8px">
+  ${ckb("cgu", `J'accepte les <button class="link" style="padding:0;color:inherit" data-a="cgu">conditions d'utilisation</button> et j'ai lu la <button class="link" style="padding:0;color:inherit" data-a="privacy">politique de confidentialité</button>`)}
+  ${ckb("news", "Je veux recevoir les nouveautés MOVENTHY par e-mail <span class='sub'>(facultatif)</span>")}
+ </div>
+ ${SU.err.cgu ? `<p class="xs" style="color:var(--danger);margin-top:8px">${esc(SU.err.cgu)}</p>` : ""}
+ <p class="xs sub mt">Version de test : ton compte est créé sur ce téléphone uniquement, sans serveur. Ton mot de passe n'est jamais enregistré en clair. L'abonnement MOVENTHY Plus sera proposé plus tard.</p>
+ <div class="foot"><button class="btn" data-a="suOk">Créer mon compte</button><button class="link" style="display:block;margin:8px auto 0" data-a="login">J'ai déjà un compte</button></div>`;
+OVK.login = o => `<div class="ovh">${backBtn("suBack")}</div>
+ <p class="eyebrow">Connexion</p><h1>Content·e de te revoir</h1>
+ ${fld("email","E-mail","email",'autocomplete="email" inputmode="email"')}
+ <label class="field"><span>Mot de passe</span><input class="input" id="su_pw" type="password" data-in="su:pw" value="${esc(SU.pw)}" autocomplete="current-password"></label>
+ ${SU.err.login ? `<div class="note warn">${ic("info")}<div>${esc(SU.err.login)}</div></div>` : ""}
+ <button class="link" data-a="forgot">Mot de passe oublié ?</button>
+ <div class="foot"><button class="btn" data-a="loginOk">Se connecter</button><button class="link" style="display:block;margin:8px auto 0" data-a="signup">Créer un compte</button></div>`;
 
 let ONB = null;
 const newDraft = () => ({name:"", intent:null, intent2:null, disc:[], level:null, recent:[], ease:3, days:[], minutes:20, places:[],
@@ -160,7 +194,7 @@ function tog(path, label, sub){
 function onbValid(){
  const d = ONB.d;
  switch (ONB.step){
-  case 1: return !!d.intent && d.disc.length > 0 && (!ONB.test || !!(d.name||"").trim());
+  case 1: return !!d.intent && d.disc.length > 0;
   case 2: return !!d.level && d.days.length > 0 && !!d.minutes;
   case 3: return d.places.length > 0;
   case 4: { const h = d.horizon; if (h.type==="none") return true; if (h.type==="duration") return !!h.weeks;
@@ -173,7 +207,7 @@ OVK.onb = () => {
  const titles = ["","Qu'est-ce qui te motive ?","Où en es-tu ?","Où tu bouges","Ton horizon","Ton programme"];
  let body = "";
  if (st===1){
-  body = `<label class="field"><span>${ONB.test ? "Ton prénom" : "Ton prénom (facultatif)"}</span><input class="input" data-in="name" maxlength="30" autocomplete="given-name" ${ONB.test ? "required" : ""} placeholder="${esc(ONB.hint ? "Ex. : " + ONB.hint : "")}" value="${esc(d.name||"")}"></label>
+  body = `<p class="sub" style="margin:-8px 0 18px">${S.account ? esc(S.account.first) + ", c" : "C"}hoisis ton objectif principal. Tu pourras en changer.</p>
   ${INTENTS.map(i => opt("intent", i.id, i.t, i.s)).join("")}
   <h2>Ce qui t'attire</h2>
   <div class="chips">${DISC_ORDER.map(k => chip("disc", k, `${ic(typeIcon(k),"s")} ${DISC[k].t}`, "multi")).join("")}</div>
@@ -324,7 +358,7 @@ function noticeHTML(n){
  return "";
 }
 function topBar(){
- const t = T(), name = S.profile && S.profile.name;
+ const t = T(), name = (S.account && S.account.first) || (S.profile && S.profile.name);
  return `<div class="top">${MARK}<div class="hi"><span>${fmtLong(t).replace(/^./, c => c.toUpperCase())}${S.simOffset ? " · simulé" : ""}</span><b>${name ? "Bonjour " + esc(name) : "Bonjour"}</b></div><button class="ib" data-a="safety" aria-label="Sécurité">${ic("shield")}</button></div>`;
 }
 function vToday(){
@@ -722,13 +756,16 @@ function vProfile(){
  const s = S.settings, p = S.profile;
  const tg = (k, l, sub) => `<button class="toggle" role="switch" aria-checked="${!!s[k]}" data-a="set" data-k="${k}"><span class="t"><b>${l}</b>${sub ? `<br><span>${sub}</span>` : ""}</span><span class="sw"></span></button>`;
  const row = (a, v, t1, t2, extra) => `<button class="rowi" data-a="${a}" ${v!=null ? `data-v="${v}"` : ""} ${extra||""}><span class="t"><b>${t1}</b>${t2 ? `<span>${t2}</span>` : ""}</span><span class="go">${ic("chev","s")}</span></button>`;
- let h = `<div class="top">${MARK}<div class="hi"><span>Profil</span><b>${p && p.name ? esc(p.name) : "Mon compte local"}</b></div></div>`;
- if (p) h += `<h2 style="margin-top:0">Mon programme</h2><div class="card flat">
+ const a = S.account;
+ let h = `<div class="top">${MARK}<div class="hi"><span>Profil</span><b>${a ? esc(a.first + (a.last ? " " + a.last : "")) : "Sans compte"}</b></div></div>`;
+ h += a && S.loggedIn ? `<div class="card flat">${row("account",null,"Mes informations", esc(a.email))}${row("logout",null,"Se déconnecter","Tes données restent sur ce téléphone")}</div><h2>Mon programme</h2>`
+  : `<div class="hero" style="margin-bottom:12px"><div class="ttl">Crée ton compte</div><p class="meta">Pour un programme qui s'adapte à toi et garder ta progression.</p><button class="btn" data-a="signup">Créer un compte</button><button class="link" style="display:block;margin:8px auto 0" data-a="login">J'ai déjà un compte</button></div>`;
+ if (p && S.loggedIn) h += `<div class="card flat">
   ${row("edit",1,"Objectif", esc(goalText(p)) + " · " + p.disc.map(k => DISC[k].t).join(", "))}
   ${row("edit",2,"Rythme", `${LEVELS.find(l => l.id===p.level).t} · ${p.days.length} jours · ${p.minutes} min`)}
   ${row("edit",3,"Lieux et matériel", p.places.map(x => PLACES[x]).join(", "))}
   ${row("edit",4,"Échéance", esc(horizonText(p)))}</div>`;
- else h += `<div class="hero"><div class="ttl">Pas encore de programme</div><button class="btn" data-a="startOnb">Créer mon programme</button></div>`;
+ else if (S.loggedIn) h += `<div class="hero"><div class="ttl">Pas encore de programme</div><button class="btn" data-a="startOnb">Créer mon programme</button></div>`;
  h += `<h2>Affichage</h2><div class="card">
   <div class="row"><span style="flex:1"><b>Taille du texte</b><br><span class="sub small">${Math.round(s.scale*100)} %</span></span><button class="ib" data-a="scale" data-v="-1" aria-label="Réduire le texte">${ic("minus")}</button><button class="ib" data-a="scale" data-v="1" aria-label="Agrandir le texte">${ic("plus")}</button></div>
   <div class="seg" role="radiogroup" style="margin:16px 0 4px">${[["dark","Sombre"],["light","Clair"],["auto","Auto"]].map(([k,l]) => `<button role="radio" aria-selected="${s.theme===k}" aria-checked="${s.theme===k}" data-a="theme" data-v="${k}">${l}</button>`).join("")}</div>
@@ -737,10 +774,10 @@ function vProfile(){
   ${row("privacy",null,"Mes données","Sur ce téléphone uniquement")}
   ${row("export",null,"Exporter","Fichier JSON")}
   ${row("safety",null,"Sécurité","Quand arrêter, qui appeler")}
-  ${row("wipe",null,"Tout supprimer","Définitif","style=\"color:var(--danger)\"")}</div>
+  ${row("wipe",null,S.account ? "Supprimer mon compte" : "Tout supprimer","Compte, programme et historique · définitif","style=\"color:var(--danger)\"")}</div>
  <div class="card mt"><b>Version de test</b><p class="small sub" style="margin-top:4px">Tout est ouvert pendant le test. Rappels de séance : bientôt.</p></div>
  <h2>Mode test</h2><div class="card flat">
-  <p class="small sub" style="padding-top:14px">Chaque profil relance le parcours complet (prénom, objectif, rythme, lieux, horizon), pré-rempli pour aller vite. Tout reste modifiable.</p>
+  <p class="small sub" style="padding-top:14px">Chaque profil relance l'inscription (prénom, nom, e-mail, mot de passe, date de naissance), puis le questionnaire pré-rempli. Le compte de test remplace celui de ce téléphone.</p>
   ${row("persona","","Nouveau testeur","Parcours vierge, toutes les questions")}
   ${Object.entries(PERSONAS).map(([k,v]) => row("persona",k,v.t,v.s)).join("")}
   <div style="padding:14px 0"><p class="small"><b>${S.simOffset ? "Date simulée" : "Aujourd'hui"} :</b> ${fmtLong(T())}</p>
@@ -816,9 +853,65 @@ A.planw = el => { PLANV = "week"; WKOFF = +el.dataset.v; render(); };
 A.tab = el => { TAB = el.dataset.v; WKOFF = 0; render(); window.scrollTo(0,0); $("view").focus({preventScroll:true}); };
 A.back = () => popOv();
 A.closeSheet = () => closeSheet();
-A.adult = () => { S.adult = !S.adult; save(); renderOv(); };
-A.startOnb = () => { if (!S.adult){ OV = []; S.discovery = false; render(); return; } startOnb(1, false); };
-A.discover = () => { S.discovery = true; save(); OV = []; render(); };
+A.startOnb = () => { if (!S.loggedIn) return A.signup(); startOnb(1, false, S.account ? {name: S.account.first} : null); };
+let TEST = false;
+A.signup = () => { if (!SU || !OV.some(o => o.k==="signup")) SU = newSU(); closeSheet(); OV = OV.filter(o => o.k!=="login" && o.k!=="signup"); pushOv("signup"); };
+A.login = () => { SU = newSU(); if (S.account) SU.email = S.account.email; OV = OV.filter(o => o.k!=="login" && o.k!=="signup"); pushOv("login"); };
+A.suBack = () => { OV = OV.filter(o => o.k!=="login" && o.k!=="signup"); PRESET = null; TEST = false; render(); };
+A.suT = el => { const k = el.dataset.k; SU[k] = !SU[k]; if (k==="cgu") delete SU.err.cgu; renderOv(); };
+A.suShow = () => { SU.show = !SU.show; renderOv(); const i = $("su_pw"); if (i){ i.focus(); const n = i.value.length; try { i.setSelectionRange(n,n); } catch(e){} } };
+A.discoverAsk = () => openSheet(`<h3>Explorer sans compte</h3><p class="lead">Séances découverte, fiches exercices et événements sont ouverts sans compte. Ton programme personnalisé, lui, demande un compte.</p><div class="stack"><button class="btn" data-a="discover">J'ai 18 ans ou plus, continuer</button><button class="btn ghost" data-a="closeSheet">Retour</button></div>`);
+A.discover = () => { S.adult = true; S.discovery = true; save(); closeSheet(); OV = []; render(); };
+A.cgu = () => openSheet(`<h3>Conditions d'utilisation</h3><p class="lead">Version de test, document provisoire.</p>
+ <div class="card"><ul class="checks">
+ <li><span class="c">${ic("info","s")}</span><span>MOVENTHY est un prototype de coaching sportif réservé aux adultes. Il ne remplace pas un avis médical et ne propose pas de rééducation.</span></li>
+ <li><span class="c">${ic("info","s")}</span><span>Les contenus sont en cours de validation par des coachs qualifiés. Arrête toute séance en cas de douleur ou de malaise.</span></li>
+ <li><span class="c">${ic("info","s")}</span><span>Pendant le test, toutes les fonctions sont gratuites. Aucun paiement n'est demandé ni enregistré.</span></li>
+ <li><span class="c">${ic("info","s")}</span><span>Tu peux exporter ou supprimer ton compte et tes données à tout moment depuis Profil.</span></li></ul></div>
+ <button class="btn ghost mt" data-a="closeSheet">Fermer</button>`);
+A.suOk = async () => {
+ const e = {}, f = SU;
+ if (!f.first.trim()) e.first = "Indique ton prénom.";
+ if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim())) e.email = "Cette adresse e-mail ne semble pas valide.";
+ if (f.pw.length < 8 || !/\d/.test(f.pw)) e.pw = "8 caractères minimum, dont au moins un chiffre.";
+ if (!f.birth) e.birth = "Indique ta date de naissance.";
+ else if (ageOf(f.birth) < 18) e.birth = "MOVENTHY est réservé aux adultes pour le moment.";
+ else if (ageOf(f.birth) > 110) e.birth = "Vérifie l'année de naissance.";
+ if (!f.cgu) e.cgu = "Accepte les conditions d'utilisation pour continuer.";
+ if (!TEST && S.account && S.account.email.toLowerCase()!==f.email.trim().toLowerCase() && !e.email) e.email = "Un compte existe déjà sur ce téléphone. Connecte-toi, ou supprime-le depuis Profil.";
+ SU.err = e;
+ if (Object.keys(e).length){ renderOv(); const k = Object.keys(e)[0]; const el = $("su_" + k); if (el) el.focus(); toast("Vérifie les champs indiqués"); return; }
+ const email = f.email.trim().toLowerCase();
+ S.account = {first: f.first.trim(), last: f.last.trim(), email, birth: f.birth, pw: await hashPw(f.pw, email), news: f.news, cguAt: new Date().toISOString(), createdAt: T()};
+ S.adult = true; S.loggedIn = true; S.discovery = false; save();
+ const preset = Object.assign(PRESET ? clone(PRESET) : {}, {name: S.account.first});
+ const wasTest = TEST; PRESET = null; TEST = false; SU = null;
+ OV = []; startOnb(1, false, preset); ONB.test = wasTest; renderOv();
+ toast(`Bienvenue ${S.account.first} !`);
+};
+A.loginOk = async () => {
+ const email = SU.email.trim().toLowerCase();
+ if (!S.account || S.account.email!==email || S.account.pw !== await hashPw(SU.pw, email)){ SU.err = {login: S.account ? "E-mail ou mot de passe incorrect." : "Aucun compte n'existe sur ce téléphone. Crée-en un pour commencer."}; renderOv(); return; }
+ S.loggedIn = true; S.discovery = false; save(); SU = null;
+ OV = []; if (S.onboarded && S.profile){ TAB = "today"; render(); toast(`Bonjour ${S.account.first}`); } else startOnb(1, false, {name: S.account.first});
+};
+A.forgot = () => openSheet(`<h3>Mot de passe oublié</h3><p class="lead">En version de test, le compte est stocké sur ce téléphone, sans serveur : pas de récupération par e-mail. Tu peux tout effacer et recréer un compte.</p><div class="stack"><button class="btn danger" data-a="wipeOk">Effacer et recommencer</button><button class="btn ghost" data-a="closeSheet">Retour</button></div>`);
+A.logout = () => openSheet(`<h3>Se déconnecter ?</h3><p class="lead">Ton programme et ton historique restent sur ce téléphone. Tu les retrouveras en te reconnectant.</p><div class="btns"><button class="btn ghost" data-a="closeSheet">Annuler</button><button class="btn" data-a="logoutOk">Se déconnecter</button></div>`);
+A.logoutOk = () => { S.loggedIn = false; S.discovery = false; save(); closeSheet(); OV = []; TAB = "today"; render(); };
+A.account = () => { const a = S.account;
+ openSheet(`<h3>Mes informations</h3>
+ <div class="row" style="gap:10px"><label class="field" style="flex:1"><span>Prénom</span><input class="input" id="ac_first" value="${esc(a.first)}" maxlength="30" autocomplete="given-name"></label><label class="field" style="flex:1"><span>Nom</span><input class="input" id="ac_last" value="${esc(a.last)}" maxlength="40" autocomplete="family-name"></label></div>
+ <label class="field"><span>E-mail</span><input class="input" id="ac_email" type="email" value="${esc(a.email)}" maxlength="80" autocomplete="email"></label>
+ <button class="toggle" role="switch" aria-checked="${!!a.news}" data-a="acNews"><span class="t"><b>Nouveautés par e-mail</b><br><span>Facultatif, modifiable à tout moment</span></span><span class="sw"></span></button>
+ <p class="xs sub">Date de naissance : ${fmtLong(a.birth)} · compte créé le ${fmtD(a.createdAt)}</p>
+ <div class="btns mt"><button class="btn ghost" data-a="closeSheet">Annuler</button><button class="btn" data-a="acSave">Enregistrer</button></div>`); };
+A.acNews = el => { const on = el.getAttribute("aria-checked")!=="true"; el.setAttribute("aria-checked", on); };
+A.acSave = () => { const v = id => ($(id).value||"").trim(), email = v("ac_email").toLowerCase();
+ if (!v("ac_first")) return toast("Indique ton prénom");
+ if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return toast("E-mail non valide");
+ if (email!==S.account.email) return toast("Pour changer d'e-mail, recrée un compte (version de test)");
+ S.account.first = v("ac_first"); S.account.last = v("ac_last"); S.account.news = document.querySelector('[data-a="acNews"]').getAttribute("aria-checked")==="true";
+ if (S.profile) S.profile.name = S.account.first; save(); closeSheet(); render(); toast("Informations enregistrées"); };
 A.d = el => {
  const f = el.dataset.f, m = el.dataset.m, d = ONB.d; let v = el.dataset.v;
  const cur = getP(d, f), num = v!=="" && !isNaN(v) && !["intent","intent2","level","places","disc","horizon.type","horizon.sport"].includes(f) && !f.startsWith("equip") && !f.startsWith("dayPlace");
@@ -944,26 +1037,27 @@ A.scale = el => { const i = SCALES.indexOf(S.settings.scale); S.settings.scale =
 A.theme = el => { S.settings.theme = el.dataset.v; save(); render(); };
 A.privacy = () => openSheet(`<h3>Mes données</h3>
  <p><b>Où ?</b> Uniquement sur ce téléphone, dans le stockage de l'application. Pas de compte, pas de serveur, pas de publicité, aucun traceur.</p>
- <p><b>Quoi ?</b> Tes préférences (objectif, jours, durée, lieux, matériel), ton plan, tes séances et le ressenti que tu choisis de donner.</p>
+ <p><b>Ton compte :</b> prénom, nom, e-mail, date de naissance (pour vérifier que tu es majeur·e) et une empreinte chiffrée de ton mot de passe, jamais le mot de passe lui-même.</p>
+ <p><b>Quoi d'autre ?</b> Tes préférences (objectif, jours, durée, lieux, matériel), ton plan, tes séances et le ressenti que tu choisis de donner.</p>
  <p><b>Ce qu'on ne demande pas :</b> poids, fréquence cardiaque, blessures, état de santé, position GPS.</p>
  <p><b>Pourquoi ?</b> Uniquement pour construire et adapter ton programme.</p>
  <p><b>Tes droits :</b> tu peux tout exporter ou tout supprimer à tout moment depuis Profil. Le ressenti est facultatif ; le refuser ne limite pas le coaching.</p>
  <p class="small sub">Prototype de test. Une version avec compte et synchronisation fera l'objet d'une notice détaillée (finalités, bases légales, durées, droits, réclamation auprès de la CNIL).</p>
  <button class="btn ghost" data-a="closeSheet">Fermer</button>`);
 A.export = async () => {
- const data = JSON.stringify({app:"MOVENTHY", version:VERSION, exportedAt:new Date().toISOString(), profile:S.profile, plan:S.plan, sessions:S.sessions, log:S.log, myEvents:S.myEvents, favs:S.favs, settings:S.settings}, null, 2);
+ const data = JSON.stringify({app:"MOVENTHY", version:VERSION, exportedAt:new Date().toISOString(), account: S.account ? Object.assign({}, S.account, {pw: undefined}) : null, profile:S.profile, plan:S.plan, sessions:S.sessions, log:S.log, myEvents:S.myEvents, favs:S.favs, settings:S.settings}, null, 2);
  const name = `moventhy-donnees-${T()}.json`;
  try { const file = new File([data], name, {type:"application/json"});
   if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"Mes données MOVENTHY"}); return; } } catch(e){ if (e && e.name==="AbortError") return; }
  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type:"application/json"})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); toast("Export téléchargé");
 };
-A.wipe = () => openSheet(`<h3>Supprimer toutes tes données ?</h3><p>Programme, historique, réglages et événements ajoutés seront effacés de ce téléphone. C'est définitif.</p><div class="btns"><button class="btn ghost" data-a="closeSheet">Annuler</button><button class="btn danger" data-a="wipeOk">Tout supprimer</button></div>`);
+A.wipe = () => openSheet(`<h3>Supprimer ton compte ?</h3><p class="lead">Ton compte, ton programme, ton historique, tes réglages et tes événements seront effacés de ce téléphone. C'est définitif.</p><div class="btns"><button class="btn ghost" data-a="closeSheet">Annuler</button><button class="btn danger" data-a="wipeOk">Tout supprimer</button></div>`);
 A.wipeOk = () => { try { localStorage.removeItem(KEY); } catch(e){} S = fresh(); closeSheet(); OV = []; TAB = "today"; render(); toast("Données supprimées"); };
 A.persona = el => {
  const k = el.dataset.v, P = k ? clone(PERSONAS[k].p) : newDraft();
  if (P.horizon.type==="event"){ const e = evById(P.horizon.id); P.horizon = {type:"event", id:e.id, name:e.t, date:e.date, sport:e.sport, dist:e.dist}; }
- P.name = ""; S.adult = true;
- startOnb(1, false, P); ONB.test = true; ONB.hint = k ? PERSONAS[k].p.name : ""; renderOv();
+ delete P.name; PRESET = P; TEST = true; S.loggedIn = false; save();
+ SU = newSU(); OV = []; pushOv("signup");
 };
 A.sim = el => { const v = +el.dataset.v; S.simOffset = v ? S.simOffset + v : 0;
  if (S.simOffset < 0) S.simOffset = 0;
@@ -980,6 +1074,7 @@ document.addEventListener("click", e => {
 document.addEventListener("input", e => {
  const k = e.target.dataset && e.target.dataset.in; if (!k) return;
  if (k==="q"){ EXV.q = e.target.value; const pos = e.target.selectionStart; render(); const n = document.querySelector('[data-in="q"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(_){} } }
+ if (k.startsWith("su:") && SU){ const f = k.slice(3); SU[f] = e.target.value; if (SU.err[f]){ delete SU.err[f]; } }
  if (k==="name" && ONB){ ONB.d.name = e.target.value.trim().slice(0,30); const b = document.querySelector('[data-a="onbNext"]'); if (b) b.disabled = !onbValid(); }
  if (k==="hdate"){ ONB.d.horizon.date = e.target.value || null; ONB.d.horizon.mode = null; renderOv(); }
 });
