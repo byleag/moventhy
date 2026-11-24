@@ -1,5 +1,5 @@
-const CACHE = "moventhy-0.1.1";
-const FILES = ["./", "index.html", "styles.css", "data.js", "engine.js", "fig.js", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "icons/logo-dark.png", "icons/logo-light.png"];
+const CACHE = "moventhy-0.2.0";
+const FILES = ["./", "index.html", "styles.css", "data.js", "engine.js", "fig.js", "app.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png", "icons/logo-dark.png", "icons/logo-light.png", "fonts/outfit-400.woff2", "fonts/outfit-500.woff2", "fonts/outfit-600.woff2", "fonts/outfit-700.woff2"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x!==CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {
