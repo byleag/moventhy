@@ -257,3 +257,4 @@ ul.dots li{margin:.3rem 0}
 .cmp .card{padding:12px}
 .cmp .card .eyebrow{margin-bottom:4px}
 @media (min-width:700px){ .app{padding-top:32px} }
+@media print{.tabs{background:var(--bg)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.foot{background:var(--bg)!important}}
