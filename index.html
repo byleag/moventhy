@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MOVENTHY</title>
+<meta name="description" content="MOVENTHY — le sport qui s'adapte à ta vie, et non l'inverse. Move. Grow. Evolve.">
+<meta name="theme-color" content="#0E0E0E" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F5F5F2" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MOVENTHY">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#view">Aller au contenu</a>
+<main class="app" id="view" tabindex="-1" aria-live="polite"></main>
+<nav class="tabs" id="tabs" aria-label="Navigation principale"></nav>
+<div id="ov" class="ov" role="dialog" aria-modal="true" hidden></div>
+<div id="sheetWrap" class="sheetWrap" hidden><div class="scrim" data-a="closeSheet"></div><div id="sheet" class="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="fig.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
