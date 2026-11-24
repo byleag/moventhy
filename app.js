@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const KEY = "moventhy.v1", VERSION = "0.1.0";
+const KEY = "moventhy.v1", VERSION = "0.1.1";
 let S;
 const fresh = () => ({v:1, adult:false, onboarded:false, discovery:false, profile:null, plan:null, sessions:[], log:[], favs:[], myEvents:[], simOffset:0, lastMsgs:[],
  settings:{scale:1, theme:"auto", hc:false, motion:true, voice:true, vibrate:true, sound:true}});
@@ -39,7 +39,8 @@ const IC = {
 };
 const ic = (n, cls="") => `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 const typeIcon = t => ({marche:"walk", course:"run", renfo:"dumb", mobilite:"flex", hybride:"bolt", cardio:"pulse"}[t] || "bolt");
-const LOGO = `<svg class="logo-m" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="26" fill="var(--card)" stroke="var(--line)"/><path d="M24 72V36l19 22 19-22v36" stroke="var(--tx)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M62 36 78 20M68 19h11v11" stroke="var(--acc)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const LOGO = `<img class="logo-m" src="icons/icon-192.png" alt="" width="84" height="84">`;
+const brandLogo = () => `<img class="brandimg" src="icons/logo-${document.documentElement.classList.contains("light") ? "light" : "dark"}.png" alt="MOVENTHY" width="1465" height="255">`;
 
 /* ================= OUTILS D'AFFICHAGE ================= */
 let toastT;
@@ -84,7 +85,7 @@ function applySettings(){
  h.classList.toggle("light", !dark); h.classList.toggle("hc", !!s.hc);
  h.classList.toggle("nomotion", !s.motion || matchMedia("(prefers-reduced-motion: reduce)").matches);
  h.style.setProperty("--scale", s.scale);
- document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute("content", dark ? "#0E0E0E" : "#F5F5F2"); m.removeAttribute("media"); });
+ document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute("content", dark ? "#090E11" : "#EFEDEA"); m.removeAttribute("media"); });
 }
 
 /* ================= NAVIGATION ================= */
@@ -119,8 +120,7 @@ function closeSheet(){ $("sheetWrap").hidden = true; $("sheet").innerHTML = ""; 
 const OVK = {}, OVA = {};
 OVK.welcome = () => `
  <div class="welcome">
-  ${LOGO}
-  <h1 class="brand">MOVENTHY</h1>
+  <h1 class="brand">${brandLogo()}</h1>
   <p class="brand-sub">MOVEMENT + HEALTHY</p>
   <p class="sig">Move. Grow. Evolve.</p>
   <p class="sig2">Bouger. Grandir. Évoluer.</p>

@@ -15,7 +15,7 @@ function figSVG(P){
  const g = k => P[k] || (k==="k2" ? P.k : k==="f2" ? P.f : k==="e2" ? P.e : k==="a2" ? P.a : null);
  const L = (a,b,w,c) => { const A=g(a), B=g(b); return `<line x1="${A[0].toFixed(1)}" y1="${A[1].toFixed(1)}" x2="${B[0].toFixed(1)}" y2="${B[1].toFixed(1)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`; };
  const foot = (k,c) => { const F=g(k); return `<line x1="${F[0].toFixed(1)}" y1="${F[1].toFixed(1)}" x2="${(F[0]+12).toFixed(1)}" y2="${Math.min(0,F[1]+9).toFixed(1)}" stroke="${c}" stroke-width="7" stroke-linecap="round"/>`; };
- const M = "var(--fig)", B2 = "var(--fig2)", A = "var(--acc)";
+ const M = "var(--fig)", B2 = "var(--fig2)", A = "var(--figa)";
  let s = "";
  if (P.k2 || P.e2){ s += L("p","k2",12,B2) + L("k2","f2",10,B2) + foot("f2",B2); }
  if (P.e2) s += L("n","e2",8,B2) + L("e2","a2",7,B2);

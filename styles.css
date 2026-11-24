@@ -1,20 +1,22 @@
 /* MOVENTHY — identité provisoire (logo et palette définitifs à venir) */
 :root{
  --scale:1;
- --bg:#0E0E0E; --card:#171717; --card2:#212121; --line:#2E2E2E; --tx:#F3F3F1; --sub:#ABABA6;
- --acc:#8FE3B0; --acc-tx:#0B0B0B; --acc-soft:rgba(143,227,176,.13); --warn:#F2C46D; --warn-soft:rgba(242,196,109,.12);
+ /* Palette MOVENTHY : Onyx #090E11 · Pétrole #213439 · Menthe #ACD1BB · Écru #EFEDEA */
+ --onyx:#090E11; --petrole:#213439; --menthe:#ACD1BB; --ecru:#EFEDEA;
+ --bg:#090E11; --card:#111B1F; --card2:#18272C; --line:#26393E; --tx:#EFEDEA; --sub:#A3B3B0;
+ --acc:#ACD1BB; --acc-tx:#090E11; --acc-soft:rgba(172,209,187,.13); --warn:#F2C46D; --warn-soft:rgba(242,196,109,.12);
  --danger:#FF9A8F; --danger-soft:rgba(255,154,143,.12);
- --fig:#EDEDEA; --fig2:#7E7E7A; --fig3:#5C5C58;
+ --fig:#EFEDEA; --fig2:#6F8784; --figa:#ACD1BB; --fig3:#3D5559;
  --r:18px; --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
  color-scheme:dark;
 }
 html.light{
- --bg:#F5F5F2; --card:#FFFFFF; --card2:#EEEEE9; --line:#DCDCD5; --tx:#121212; --sub:#585853;
- --acc:#0E6E46; --acc-tx:#FFFFFF; --acc-soft:rgba(14,110,70,.09); --warn:#8A5A00; --warn-soft:rgba(200,140,20,.12);
+ --bg:#EFEDEA; --card:#FAF9F7; --card2:#E3E8E5; --line:#D2D9D6; --tx:#090E11; --sub:#4B5B5D;
+ --acc:#213439; --acc-tx:#EFEDEA; --acc-soft:rgba(172,209,187,.38); --warn:#8A5A00; --warn-soft:rgba(200,140,20,.12);
  --danger:#B3261E; --danger-soft:rgba(179,38,30,.08);
- --fig:#262626; --fig2:#9B9B96; --fig3:#B8B8B2; color-scheme:light;
+ --fig:#213439; --fig2:#93A6A3; --figa:#3F8C70; --fig3:#BCC9C5; color-scheme:light;
 }
-html.hc{ --sub:#DADAD6; --line:#7A7A76; --card:#121212; --card2:#1C1C1C; }
+html.hc{ --sub:#DCE3E1; --line:#6F8784; --card:#0E171A; --card2:#172327; }
 html.light.hc{ --sub:#2A2A2A; --line:#6A6A66; --card:#FFFFFF; --card2:#F0F0EC; }
 html.hc .card,html.hc .chip,html.hc .li{border-width:2px}
 
@@ -215,7 +217,9 @@ p{margin:.35rem 0}
 .brand-sub{letter-spacing:.14em;font-size:.8rem;color:var(--sub);margin:.4rem 0 1.2rem}
 .sig{font-size:1.2rem;font-weight:700;margin:0}
 .sig2{color:var(--sub);margin:.2rem 0 1.4rem}
-.logo-m{width:84px;height:84px;margin:0 auto 18px;display:block}
+.logo-m{width:84px;height:84px;margin:0 auto 18px;display:block;border-radius:20px}
+.brandimg{width:min(100%,340px);height:auto;display:block;margin:0 auto}
+.brand .sr{position:absolute}
 .check{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--card);width:100%;color:var(--tx)}
 .check .bx{width:24px;height:24px;border-radius:7px;border:2px solid var(--sub);flex:none;display:grid;place-items:center}
 .check[aria-checked="true"] .bx{background:var(--acc);border-color:var(--acc);color:var(--acc-tx)}
