@@ -160,7 +160,7 @@ function tog(path, label, sub){
 function onbValid(){
  const d = ONB.d;
  switch (ONB.step){
-  case 1: return !!d.intent && d.disc.length > 0;
+  case 1: return !!d.intent && d.disc.length > 0 && (!ONB.test || !!(d.name||"").trim());
   case 2: return !!d.level && d.days.length > 0 && !!d.minutes;
   case 3: return d.places.length > 0;
   case 4: { const h = d.horizon; if (h.type==="none") return true; if (h.type==="duration") return !!h.weeks;
@@ -173,7 +173,7 @@ OVK.onb = () => {
  const titles = ["","Qu'est-ce qui te motive ?","Où en es-tu ?","Où tu bouges","Ton horizon","Ton programme"];
  let body = "";
  if (st===1){
-  body = `<label class="field"><span>Ton prénom (facultatif)</span><input class="input" data-in="name" maxlength="30" autocomplete="given-name" value="${esc(d.name||"")}"></label>
+  body = `<label class="field"><span>${ONB.test ? "Ton prénom" : "Ton prénom (facultatif)"}</span><input class="input" data-in="name" maxlength="30" autocomplete="given-name" ${ONB.test ? "required" : ""} placeholder="${esc(ONB.hint ? "Ex. : " + ONB.hint : "")}" value="${esc(d.name||"")}"></label>
   ${INTENTS.map(i => opt("intent", i.id, i.t, i.s)).join("")}
   <h2>Ce qui t'attire</h2>
   <div class="chips">${DISC_ORDER.map(k => chip("disc", k, `${ic(typeIcon(k),"s")} ${DISC[k].t}`, "multi")).join("")}</div>
@@ -740,6 +740,8 @@ function vProfile(){
   ${row("wipe",null,"Tout supprimer","Définitif","style=\"color:var(--danger)\"")}</div>
  <div class="card mt"><b>Version de test</b><p class="small sub" style="margin-top:4px">Tout est ouvert pendant le test. Rappels de séance : bientôt.</p></div>
  <h2>Mode test</h2><div class="card flat">
+  <p class="small sub" style="padding-top:14px">Chaque profil relance le parcours complet (prénom, objectif, rythme, lieux, horizon), pré-rempli pour aller vite. Tout reste modifiable.</p>
+  ${row("persona","","Nouveau testeur","Parcours vierge, toutes les questions")}
   ${Object.entries(PERSONAS).map(([k,v]) => row("persona",k,v.t,v.s)).join("")}
   <div style="padding:14px 0"><p class="small"><b>${S.simOffset ? "Date simulée" : "Aujourd'hui"} :</b> ${fmtLong(T())}</p>
   <div class="chips mt"><button class="chip sm" data-a="sim" data-v="1">+1 jour</button><button class="chip sm" data-a="sim" data-v="7">+1 semaine</button><button class="chip sm" data-a="sim" data-v="14">+2 semaines</button>${S.simOffset ? `<button class="chip sm" data-a="sim" data-v="0">Revenir</button>` : ""}</div></div></div>
@@ -850,6 +852,7 @@ A.onbDone = () => {
  const d = ONB.d, t = T();
  if (!d.perDay) d.dayPlace = {};
  if (!ONB.edit){
+  if (ONB.test){ S.sessions = []; S.log = []; S.lastMsgs = []; S.favs = []; }
   S.profile = d; S.sessions = S.sessions.filter(s => !s.plan); createPlan(S); S.onboarded = true; S.discovery = false; toast("Ton programme est prêt");
  } else {
   const oldH = JSON.stringify(S.profile.horizon); S.profile = d;
@@ -957,10 +960,10 @@ A.export = async () => {
 A.wipe = () => openSheet(`<h3>Supprimer toutes tes données ?</h3><p>Programme, historique, réglages et événements ajoutés seront effacés de ce téléphone. C'est définitif.</p><div class="btns"><button class="btn ghost" data-a="closeSheet">Annuler</button><button class="btn danger" data-a="wipeOk">Tout supprimer</button></div>`);
 A.wipeOk = () => { try { localStorage.removeItem(KEY); } catch(e){} S = fresh(); closeSheet(); OV = []; TAB = "today"; render(); toast("Données supprimées"); };
 A.persona = el => {
- const P = clone(PERSONAS[el.dataset.v].p);
+ const k = el.dataset.v, P = k ? clone(PERSONAS[k].p) : newDraft();
  if (P.horizon.type==="event"){ const e = evById(P.horizon.id); P.horizon = {type:"event", id:e.id, name:e.t, date:e.date, sport:e.sport, dist:e.dist}; }
- S.profile = P; S.sessions = []; S.log = []; S.lastMsgs = []; S.adult = true; createPlan(S); S.onboarded = true; S.discovery = false;
- save(); TAB = "today"; render(); window.scrollTo(0,0); toast(`Profil test : ${PERSONAS[el.dataset.v].t.split(",")[0]}`);
+ P.name = ""; S.adult = true;
+ startOnb(1, false, P); ONB.test = true; ONB.hint = k ? PERSONAS[k].p.name : ""; renderOv();
 };
 A.sim = el => { const v = +el.dataset.v; S.simOffset = v ? S.simOffset + v : 0;
  if (S.simOffset < 0) S.simOffset = 0;
@@ -977,7 +980,7 @@ document.addEventListener("click", e => {
 document.addEventListener("input", e => {
  const k = e.target.dataset && e.target.dataset.in; if (!k) return;
  if (k==="q"){ EXV.q = e.target.value; const pos = e.target.selectionStart; render(); const n = document.querySelector('[data-in="q"]'); if (n){ n.focus(); try { n.setSelectionRange(pos,pos); } catch(_){} } }
- if (k==="name" && ONB){ ONB.d.name = e.target.value.trim().slice(0,30); }
+ if (k==="name" && ONB){ ONB.d.name = e.target.value.trim().slice(0,30); const b = document.querySelector('[data-a="onbNext"]'); if (b) b.disabled = !onbValid(); }
  if (k==="hdate"){ ONB.d.horizon.date = e.target.value || null; ONB.d.horizon.mode = null; renderOv(); }
 });
 document.addEventListener("change", e => { const k = e.target.dataset && e.target.dataset.in; if (k==="dep"){ EXV.dep = e.target.value; render(); } });
