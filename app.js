@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const KEY = "moventhy.v1", VERSION = "0.2.0";
+const KEY = "moventhy.v1", VERSION = "0.2.1";
 let S;
 const fresh = () => ({v:1, adult:false, onboarded:false, discovery:false, account:null, loggedIn:false, profile:null, plan:null, sessions:[], log:[], favs:[], myEvents:[], simOffset:0, lastMsgs:[],
  settings:{scale:1, theme:"dark", hc:false, motion:true, voice:true, vibrate:true, sound:true}});
@@ -601,8 +601,9 @@ OVK.player = () => {
  let mid;
  if (ringMode){
   const lab = st.rest ? "Récupération" : LAB[ex.id] || ex.n;
-  mid = `<div class="ringw"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#1C2A2F" stroke-width="4"/><circle id="plRing" cx="50" cy="50" r="46" fill="none" stroke="#ACD1BB" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(RC*(1-k)).toFixed(1)} ${RC.toFixed(1)}"/></svg>
-   <div class="ringc"><span class="lab">${esc(lab)}</span><span class="clock" id="plClock">${clockStr(st.dur - elapsed())}</span><span class="of">sur ${clockStr(st.dur)}${ex ? " · " + esc(ex.cues[0].toLowerCase()) : ""}</span></div></div>`;
+  mid = `<div class="ringzone"><div class="ringw"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="#1C2A2F" stroke-width="3.5"/><circle id="plRing" cx="50" cy="50" r="46" fill="none" stroke="#ACD1BB" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${(RC*(1-k)).toFixed(1)} ${RC.toFixed(1)}"/></svg>
+   <div class="ringc"><span class="lab">${esc(lab)}</span><span class="clock" id="plClock">${clockStr(st.dur - elapsed())}</span><span class="of">sur ${clockStr(st.dur)}</span></div></div>
+   ${ex ? `<p class="cue">${esc(ex.cues[0])}</p>` : `<p class="cue">Respire, détends-toi</p>`}</div>`;
  } else {
   mid = `<div class="stage"><svg id="plStage" role="img" aria-label="Démonstration : ${esc(ex.n)}"></svg></div>
    <div class="nm">${esc(ex.n)}</div>
